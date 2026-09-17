@@ -2657,6 +2657,16 @@ export const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
       ),
     );
 
+  const setThreadName: NonNullable<CodexAdapterShape["setThreadName"]> = (threadId, name) =>
+    requireSession(threadId).pipe(
+      Effect.flatMap((session) => session.runtime.setThreadName(name)),
+      Effect.mapError((cause) =>
+        cause._tag === "ProviderAdapterSessionNotFoundError"
+          ? cause
+          : mapCodexRuntimeError(threadId, "thread/name/set", cause),
+      ),
+    );
+
   const writeNativeEvent = Effect.fnUntraced(function* (event: ProviderEvent) {
     if (!nativeEventLogger) {
       return;
@@ -2718,6 +2728,7 @@ export const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
     },
     startSession,
     sendTurn,
+    setThreadName,
     compaction: { type: "native", start: compactThread },
     interruptTurn,
     readThread,

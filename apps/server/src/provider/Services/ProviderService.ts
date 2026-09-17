@@ -54,6 +54,12 @@ export interface ProviderServiceShape {
     input: ProviderSendTurnInput,
   ) => Effect.Effect<ProviderTurnStartResult, ProviderServiceError>;
 
+  /** Sync a T3 title to the active provider session when supported. */
+  readonly setThreadTitle: (
+    threadId: ThreadId,
+    title: string,
+  ) => Effect.Effect<void, ProviderServiceError>;
+
   readonly compactThread: (
     threadId: ThreadId,
     modelSelection?: ProviderSendTurnInput["modelSelection"],

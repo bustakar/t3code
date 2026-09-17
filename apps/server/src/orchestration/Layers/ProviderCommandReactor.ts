@@ -1020,6 +1020,31 @@ const make = Effect.gen(function* () {
     });
   });
 
+  const syncGeneratedThreadTitle = Effect.fn("syncGeneratedThreadTitle")(function* (
+    threadId: ThreadId,
+    expectedTitle?: string,
+  ) {
+    const thread = yield* resolveThreadShell(threadId);
+    if (
+      !thread ||
+      thread.titleState?.source !== "generated" ||
+      String(thread.titleState.version).startsWith("provider:") ||
+      (expectedTitle !== undefined && thread.title !== expectedTitle)
+    ) {
+      return;
+    }
+    yield* providerService.setThreadTitle(threadId, thread.title).pipe(
+      Effect.catchCause((cause) =>
+        Cause.hasInterruptsOnly(cause)
+          ? Effect.failCause(cause)
+          : Effect.logWarning("provider command reactor failed to sync generated thread title", {
+              threadId,
+              cause: Cause.pretty(cause),
+            }),
+      ),
+    );
+  });
+
   const regenerateThreadTitle = Effect.fn("regenerateThreadTitle")(function* (
     event: Extract<ProviderIntentEvent, { type: "thread.meta-updated" }>,
     requestId: CommandId,
@@ -1774,12 +1799,16 @@ const make = Effect.gen(function* () {
     switch (event.type) {
       case "thread.meta-updated":
         if (event.payload.regenerateTitle) yield* threadTitleRegenerationWorker.enqueue(event);
-        else if (event.payload.titleState?.needsRefinement)
+        else if (event.payload.title !== undefined)
+          yield* syncGeneratedThreadTitle(event.payload.threadId, event.payload.title);
+        if (event.payload.titleState?.needsRefinement)
           yield* maybeRefineThreadTitle(event.payload.threadId);
         return;
       case "thread.session-set":
-        if (event.payload.session.status === "ready")
+        if (event.payload.session.status === "ready") {
+          yield* syncGeneratedThreadTitle(event.payload.threadId);
           yield* maybeRefineThreadTitle(event.payload.threadId);
+        }
         return;
       case "thread.runtime-mode-set": {
         const thread = yield* resolveThreadShell(event.payload.threadId);
@@ -1876,6 +1905,7 @@ const make = Effect.gen(function* () {
       if (
         (event.type === "thread.meta-updated" &&
           (event.payload.regenerateTitle === true ||
+            event.payload.title !== undefined ||
             event.payload.titleState?.needsRefinement === true)) ||
         (event.type === "thread.session-set" && event.payload.session.status === "ready") ||
         event.type === "thread.runtime-mode-set" ||

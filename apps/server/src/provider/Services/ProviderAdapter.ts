@@ -85,6 +85,9 @@ export interface ProviderAdapterShape<TError> {
     input: ProviderSendTurnInput,
   ) => Effect.Effect<ProviderTurnStartResult, TError>;
 
+  /** Omitted when the provider does not expose a native thread name. */
+  readonly setThreadName?: (threadId: ThreadId, name: string) => Effect.Effect<void, TError>;
+
   /** Omitted when this adapter does not support manual context compaction. */
   readonly compaction?: ProviderCompaction<TError>;
 

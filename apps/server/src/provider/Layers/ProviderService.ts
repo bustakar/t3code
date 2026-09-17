@@ -1792,6 +1792,25 @@ const makeProviderService = Effect.fn("makeProviderService")(function* (
     );
   });
 
+  const setThreadTitle: ProviderServiceMethod<"setThreadTitle"> = Effect.fn("setThreadTitle")(
+    function* (threadId, title) {
+      const routed = yield* resolveRoutableSession({
+        threadId,
+        operation: "ProviderService.setThreadTitle",
+        allowRecovery: false,
+      });
+      if (!routed.isActive || routed.adapter.setThreadName === undefined) {
+        return;
+      }
+      yield* Effect.annotateCurrentSpan({
+        "provider.operation": "set-thread-title",
+        "provider.kind": routed.adapter.provider,
+        "provider.thread_id": threadId,
+      });
+      yield* routed.adapter.setThreadName(routed.threadId, title);
+    },
+  );
+
   const compactThread: ProviderServiceMethod<"compactThread"> = Effect.fn("compactThread")(
     function* (threadId, modelSelection, requestId) {
       const routed = yield* resolveRoutableSession({
@@ -2401,6 +2420,7 @@ const makeProviderService = Effect.fn("makeProviderService")(function* (
   return {
     startSession,
     sendTurn,
+    setThreadTitle,
     compactThread,
     interruptTurn,
     respondToRequest,

@@ -86,6 +86,10 @@ class FakeCodexRuntime implements CodexSessionRuntimeShape {
 
   public readonly compactThread = Effect.void;
 
+  public readonly setThreadNameImpl = vi.fn((_name: string): Promise<void> =>
+    Promise.resolve(undefined),
+  );
+
   public readonly interruptTurnImpl = vi.fn((_turnId?: TurnId): Promise<void> =>
     Promise.resolve(undefined),
   );
@@ -134,6 +138,10 @@ class FakeCodexRuntime implements CodexSessionRuntimeShape {
 
   sendTurn(input: CodexSessionRuntimeSendTurnInput) {
     return Effect.promise(() => this.sendTurnImpl(input));
+  }
+
+  setThreadName(name: string) {
+    return Effect.promise(() => this.setThreadNameImpl(name));
   }
 
   interruptTurn(turnId?: TurnId) {
@@ -319,6 +327,24 @@ const sessionErrorLayer = it.layer(
 );
 
 sessionErrorLayer("CodexAdapterLive session errors", (it) => {
+  it.effect("sets the native name for an active Codex thread", () =>
+    Effect.gen(function* () {
+      const adapter = yield* CodexAdapter;
+      const threadId = asThreadId("thread-title-sync");
+      yield* adapter.startSession({
+        provider: ProviderDriverKind.make("codex"),
+        threadId,
+        runtimeMode: "full-access",
+      });
+      NodeAssert.ok(adapter.setThreadName);
+      yield* adapter.setThreadName(threadId, "Generated T3 title");
+
+      const runtime = sessionRuntimeFactory.lastRuntime;
+      NodeAssert.ok(runtime);
+      NodeAssert.deepStrictEqual(runtime.setThreadNameImpl.mock.calls, [["Generated T3 title"]]);
+    }),
+  );
+
   it.effect("maps missing adapter sessions to ProviderAdapterSessionNotFoundError", () =>
     Effect.gen(function* () {
       const adapter = yield* CodexAdapter;

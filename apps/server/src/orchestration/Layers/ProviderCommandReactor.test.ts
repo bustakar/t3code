@@ -272,6 +272,7 @@ describe("ProviderCommandReactor", () => {
         turnId: asTurnId("turn-1"),
       }),
     );
+    const setThreadTitle = vi.fn<ProviderServiceShape["setThreadTitle"]>(() => Effect.void);
     const compactThread = vi.fn((_: ThreadId) => input?.compactThreadEffect?.() ?? Effect.void);
     const interruptTurn = vi.fn((_: unknown) => input?.interruptTurnEffect?.() ?? Effect.void);
     const respondToRequest = vi.fn<ProviderServiceShape["respondToRequest"]>(() => Effect.void);
@@ -358,6 +359,7 @@ describe("ProviderCommandReactor", () => {
     const service: ProviderServiceShape = {
       startSession: startSession as ProviderServiceShape["startSession"],
       sendTurn: sendTurn as ProviderServiceShape["sendTurn"],
+      setThreadTitle,
       compactThread,
       interruptTurn: interruptTurn as ProviderServiceShape["interruptTurn"],
       respondToRequest: respondToRequest as ProviderServiceShape["respondToRequest"],
@@ -613,6 +615,7 @@ describe("ProviderCommandReactor", () => {
       tryHandlePromptCommand,
       startSession,
       sendTurn,
+      setThreadTitle,
       compactThread,
       interruptTurn,
       respondToRequest,
@@ -1011,6 +1014,10 @@ describe("ProviderCommandReactor", () => {
       );
       expect(harness.generateThreadTitle).toHaveBeenCalledWith(
         expect.objectContaining({ message: "Use the current message" }),
+      );
+      expect(harness.setThreadTitle).toHaveBeenCalledWith(
+        ThreadId.make("thread-1"),
+        "Generated title",
       );
     }),
   );
